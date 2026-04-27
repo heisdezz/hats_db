@@ -19,7 +19,7 @@ routerAdd(
     const id = e.request?.pathValue("id");
     const userId = e.auth?.id;
     try {
-      console.log(JSON.stringify({ userId, id }));
+      // console.log(JSON.stringify({ userId, id }));
       const record = e.app.findFirstRecordByFilter(
         "cart",
         "product = {:id} && user = {:user}",
@@ -47,6 +47,6 @@ onRecordCreateRequest((e) => {
   const body = e.requestInfo().body;
   e.record?.set("user", userId);
   const record_details = e.record?.get("product");
-  console.log(JSON.stringify(record_details), "body");
+  // console.log(JSON.stringify(record_details), "body");
   e.next();
 }, "cart");
