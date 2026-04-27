@@ -53,6 +53,8 @@ routerAdd("POST", "/register", (e) => {
       txApp.save(deliver_record);
       saved_user = user_record;
     });
+
+    //@ts-ignore
     return $apis.recordAuthResponse(e, saved_user, "username");
   } catch (error) {
     return e.json(500, {
