@@ -2,8 +2,11 @@
   "dependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
+    "@types/paystack": "^2.0.5",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "paystack": "^2.0.1",
+    "paystack-sdk": "^3.7.0",
     "typescript": "^6.0.3"
   }
 }
