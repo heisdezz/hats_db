@@ -337,6 +337,7 @@ routerAdd(
       );
 
       for (const item of all_cart) {
+        if (!item) return;
         const product_id = item.getString("product");
         const product = e.app.findRecordById("products", product_id);
         const item_count = item.getInt("amount");
@@ -347,6 +348,7 @@ routerAdd(
         new_order.set("profile", user_profile);
         new_order.set("price", product.getFloat("price") * item_count);
         new_order.set("status", "pending");
+        new_order.set("extraInfo", item.getString("extraInfo"));
         new_order.set("deliveryLocation", {
           lat: delivery_location?.getFloat("lat"),
           lng: delivery_location?.getFloat("lng"),
