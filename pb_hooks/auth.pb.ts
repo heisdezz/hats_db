@@ -30,6 +30,8 @@ routerAdd("POST", "/register", (e) => {
   const users_collection = e.app.findCollectionByNameOrId("users");
   const profile_collection = e.app.findCollectionByNameOrId("profile");
   const deliver_collection = e.app.findCollectionByNameOrId("deliverySettings");
+  const session_collection =
+    e.app.findCollectionByNameOrId("checkout_sessions");
 
   let saved_user;
   try {
@@ -52,6 +54,9 @@ routerAdd("POST", "/register", (e) => {
       deliver_record.set("profile", profile_record.id);
       txApp.save(deliver_record);
       saved_user = user_record;
+      const session_record = new Record(session_collection);
+      session_record.set("user", user_record.id);
+      txApp.save(session_record);
     });
 
     //@ts-ignore
@@ -142,6 +147,7 @@ routerAdd(
       delivery_record.set("city", body.city);
       delivery_record.set("state", body.state);
       delivery_record.set("location", body.location);
+      delivery_record.set("user", user_auth);
       e.app.save(delivery_record);
       e.next;
       return e.json(200, user_profile);

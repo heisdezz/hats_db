@@ -116,6 +116,21 @@ routerAdd(
     const user_email = e.auth?.get("email");
     const check_collection =
       e.app.findCollectionByNameOrId("checkout_sessions");
+
+    const delivery_record = e.app.findFirstRecordByData(
+      "deliverySettings",
+      "user",
+      userId,
+    );
+
+    const fullAddress = delivery_record.getString("fullAddress");
+    // console.log(fullAddress, JSON.stringify(delivery_record));
+    if (!fullAddress) {
+      return e.json(400, {
+        data: null,
+        message: "update delivery settings",
+      });
+    }
     try {
       const all_cart = e.app.findAllRecords(
         "cart",
@@ -174,7 +189,7 @@ routerAdd(
             status: "pending",
           });
           e.app.save(new_check);
-          e.next();
+          // e.next();
 
           const res = $http.send({
             method: "POST",
@@ -207,6 +222,29 @@ routerAdd(
         const hash = checkout_session.get("hash");
         if (hash == cart_hash) {
           const reference = checkout_session.get("reference");
+          let access_code = checkout_session.get("access_code");
+          console.log("access_code", access_code);
+          if (!access_code) {
+            const res = $http.send({
+              method: "POST",
+              url: "https://api.paystack.co/transaction/initialize",
+              headers: {
+                Authorization: "Bearer " + secret,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: user_email,
+                amount: total * 100,
+                reference,
+              }),
+            });
+            if (res.statusCode !== 200) {
+              throw new Error("Paystack error: " + res.raw);
+            }
+            const parsed = JSON.parse(res.raw);
+            checkout_session.set("access_code", parsed.data.access_code);
+            e.app.save(checkout_session);
+          }
           return e.json(200, {
             data: {
               message: "checkout",
@@ -229,8 +267,9 @@ routerAdd(
         checkout_session.set("hash", cart_hash);
         checkout_session.set("reference", reference);
         checkout_session.set("status", "pending");
+        checkout_session.set("cart_items", JSON.stringify(cartItems));
         e.app.save(checkout_session);
-        e.next();
+        // e.next();
 
         const res = $http.send({
           method: "POST",
@@ -249,13 +288,14 @@ routerAdd(
           throw new Error("Paystack error: " + res.raw);
         }
         const parsed = JSON.parse(res.raw);
+        console.log("generated_access_coded", parsed.data.access_code);
         checkout_session.set("access_code", parsed.data.access_code);
         e.app.save(checkout_session);
         return e.json(200, {
           data: {
             reference,
+            access_code: parsed.data.access_code,
             total: total * 100,
-
             paystack: parsed.data,
           },
           message: "Checkout",
@@ -291,6 +331,7 @@ routerAdd(
       userid,
     );
 
+    const cart_items = check_session?.get("cart_items");
     const ref = check_session?.getString("reference");
     const amount = check_session?.getInt("amount");
 
@@ -298,6 +339,7 @@ routerAdd(
     if (!secret) {
       return e.json(500, { message: "PAYSTACK_SECRET_KEY is not set" });
     }
+    check_session.set("status", "paid");
 
     try {
       const session = check_session;
@@ -336,23 +378,33 @@ routerAdd(
         $dbx.exp("user = {:user}", { user: userid }),
       );
 
+      // creating orders
+      const check_cart_items = JSON.parse(check_session.get("cart_items"));
       for (const item of all_cart) {
         if (!item) return;
         const product_id = item.getString("product");
         const product = e.app.findRecordById("products", product_id);
         const item_count = item.getInt("amount");
+        console.log(item_count, "item_count");
         const new_order = new Record(order_col);
         new_order.set("user", userid);
         new_order.set("product", product_id);
         new_order.set("amount", item_count);
         new_order.set("profile", user_profile);
-        new_order.set("price", product.getFloat("price") * item_count);
         new_order.set("status", "pending");
+        new_order.set("reference", reference);
         new_order.set("extraInfo", item.getString("extraInfo"));
         new_order.set("deliveryLocation", {
           lat: delivery_location?.getFloat("lat"),
-          lng: delivery_location?.getFloat("lng"),
+          lon: delivery_location?.getFloat("lon"),
         });
+        const item_details = check_cart_items.find((i) => {
+          new_order.set("price", i.product_details.price * item_count);
+
+          return i.product_details.id === product_id;
+        });
+        console.log("item_details", item_details);
+        new_order.set("itemDetails", JSON.stringify(item_details));
         new_order.set("checkout_session", session.id);
         e.app.saveNoValidate(new_order);
         //@ts-ignore
@@ -363,7 +415,12 @@ routerAdd(
       e.app.save(session);
       //@ts-ignore
       $app.store().remove(userid);
-      e.app.delete(session);
+      session.set("access_code", "");
+      session.set("hash", "");
+      session.set("session", "");
+      session.set("cartItems", null);
+      e.app.save(session);
+      // e.app.delete(session);
       return e.json(200, {
         data: "order_placed",
         message: "Checkout validated",
