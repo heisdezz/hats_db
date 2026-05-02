@@ -29,7 +29,10 @@ routerAdd(
     );
 
     try {
-      const { cartItems, cart_total, total_quantity } = utils.build_cart_items(e.app, all_cart);
+      const { cartItems, cart_total, total_quantity } = utils.build_cart_items(
+        e.app,
+        all_cart,
+      );
       const totalDeliveryFee = deliveryFee * total_quantity;
       return e.json(200, {
         data: {
@@ -84,7 +87,8 @@ routerAdd(
     const secret = utils.secret;
     const userId = e.auth?.id;
     const user_email = e.auth?.get("email");
-    const check_collection = e.app.findCollectionByNameOrId("checkout_sessions");
+    const check_collection =
+      e.app.findCollectionByNameOrId("checkout_sessions");
 
     const delivery_record = e.app.findFirstRecordByData(
       "deliverySettings",
@@ -113,7 +117,10 @@ routerAdd(
     }
 
     try {
-      const { cartItems, cart_total, total_quantity } = utils.build_cart_items(e.app, all_cart);
+      const { cartItems, cart_total, total_quantity } = utils.build_cart_items(
+        e.app,
+        all_cart,
+      );
       if (!cartItems.length) {
         return e.json(400, { message: "Cart is empty" });
       }
@@ -140,6 +147,7 @@ routerAdd(
           reference,
           status: "pending",
           cart_items: JSON.stringify(cartItems),
+          deliveryFee,
         });
         e.app.save(new_check);
 
@@ -165,6 +173,7 @@ routerAdd(
       if (checkout_session.get("hash") === cart_hash) {
         const reference = checkout_session.getString("reference");
         let access_code = checkout_session.getString("access_code");
+        checkout_session.set("deliveryFee", deliveryFee);
         if (!access_code) {
           const parsed = utils.paystack_initialize(secret, {
             email: user_email,
@@ -173,8 +182,8 @@ routerAdd(
           });
           access_code = parsed.data.access_code;
           checkout_session.set("access_code", access_code);
-          e.app.save(checkout_session);
         }
+        e.app.save(checkout_session);
         return e.json(200, {
           data: {
             reference,
@@ -191,6 +200,7 @@ routerAdd(
       checkout_session.set("reference", reference);
       checkout_session.set("status", "pending");
       checkout_session.set("cart_items", JSON.stringify(cartItems));
+      checkout_session.set("deliveryFee", deliveryFee);
       checkout_session.set("access_code", "");
       e.app.save(checkout_session);
 
@@ -260,7 +270,11 @@ routerAdd(
       e.app.save(session);
 
       const order_col = e.app.findCollectionByNameOrId("orders");
-      const user_profile = e.app.findFirstRecordByData("profile", "user", userid);
+      const user_profile = e.app.findFirstRecordByData(
+        "profile",
+        "user",
+        userid,
+      );
       const delivery_location = e.app.findFirstRecordByData(
         "deliverySettings",
         "profile",
@@ -268,12 +282,14 @@ routerAdd(
       );
       const location = delivery_location.get("location");
       const full_address = delivery_location.getString("fullAddress");
+      console.log("user-full-address", full_address);
 
       const all_cart = e.app.findAllRecords(
         "cart",
         $dbx.exp("user = {:user}", { user: userid }),
       );
       const check_cart_items = JSON.parse(session.get("cart_items"));
+      const deliveryFee = session.getFloat("deliveryFee");
 
       for (const item of all_cart) {
         if (!item) return;
@@ -293,7 +309,11 @@ routerAdd(
         new_order.set("fullAddress", full_address);
         new_order.set("extraInfo", item.getString("extraInfo"));
         new_order.set("deliveryLocation", location);
-        new_order.set("price", item_details?.product_details.price * item_count);
+        new_order.set("deliveryFee", deliveryFee * item_count);
+        new_order.set(
+          "price",
+          item_details?.product_details.price * item_count,
+        );
         new_order.set("wristSize", item_details?.wristSize ?? 0);
         new_order.set("headSize", item_details?.headSize ?? 0);
         new_order.set("itemDetails", JSON.stringify(item_details));
@@ -312,7 +332,10 @@ routerAdd(
       //@ts-ignore
       $app.store().remove(userid);
 
-      return e.json(200, { data: "order_placed", message: "Checkout validated" });
+      return e.json(200, {
+        data: "order_placed",
+        message: "Checkout validated",
+      });
     } catch (err) {
       console.log(err);
       return e.json(500, { message: "Internal server error" });
