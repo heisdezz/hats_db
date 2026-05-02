@@ -52,6 +52,7 @@ routerAdd("POST", "/register", (e) => {
       txApp.save(profile_record);
       const deliver_record = new Record(deliver_collection);
       deliver_record.set("profile", profile_record.id);
+      deliver_record.set("user", user_record.id);
       txApp.save(deliver_record);
       saved_user = user_record;
       const session_record = new Record(session_collection);
