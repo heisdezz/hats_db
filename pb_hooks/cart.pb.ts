@@ -294,6 +294,8 @@ routerAdd(
         new_order.set("extraInfo", item.getString("extraInfo"));
         new_order.set("deliveryLocation", location);
         new_order.set("price", item_details?.product_details.price * item_count);
+        new_order.set("wristSize", item_details?.wristSize ?? 0);
+        new_order.set("headSize", item_details?.headSize ?? 0);
         new_order.set("itemDetails", JSON.stringify(item_details));
         new_order.set("checkout_session", session.id);
         e.app.saveNoValidate(new_order);
