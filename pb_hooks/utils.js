@@ -35,6 +35,7 @@ module.exports = {
 
   build_cart_items: (app, all_cart) => {
     let cart_total = 0;
+    let total_quantity = 0;
     const cartItems = [];
     for (const item of all_cart) {
       const product_id = item?.getString("product") ?? "";
@@ -48,8 +49,9 @@ module.exports = {
         product_details: product,
       });
       cart_total += item_total_price;
+      total_quantity += item_amount;
     }
-    return { cartItems, cart_total };
+    return { cartItems, cart_total, total_quantity };
   },
 
   paystack_initialize: (secret, { email, amount, reference }) => {

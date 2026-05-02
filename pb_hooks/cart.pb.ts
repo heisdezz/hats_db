@@ -29,13 +29,14 @@ routerAdd(
     );
 
     try {
-      const { cartItems, cart_total } = utils.build_cart_items(e.app, all_cart);
+      const { cartItems, cart_total, total_quantity } = utils.build_cart_items(e.app, all_cart);
+      const totalDeliveryFee = deliveryFee * total_quantity;
       return e.json(200, {
         data: {
           cart_breakdown: {
             subtotal: cart_total,
-            deliveryFee,
-            total: cart_total + deliveryFee,
+            deliveryFee: totalDeliveryFee,
+            total: cart_total + totalDeliveryFee,
           },
           cart_items: cartItems,
         },
@@ -112,13 +113,13 @@ routerAdd(
     }
 
     try {
-      const { cartItems, cart_total } = utils.build_cart_items(e.app, all_cart);
+      const { cartItems, cart_total, total_quantity } = utils.build_cart_items(e.app, all_cart);
       if (!cartItems.length) {
         return e.json(400, { message: "Cart is empty" });
       }
 
       const cart_hash = $security.md5(JSON.stringify(cartItems));
-      const total = cart_total + deliveryFee;
+      const total = cart_total + deliveryFee * total_quantity;
 
       let checkout_session = null;
       try {
