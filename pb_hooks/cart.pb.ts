@@ -259,12 +259,14 @@ routerAdd(
         const item_details = check_cart_items.find(
           (i) => i.product_details.id === product_id,
         );
-        const item_price = (item_details?.product_details.price ?? 0) * item_count;
+        const item_price =
+          (item_details?.product_details.price ?? 0) * item_count;
 
         const order_item = new Record(order_items_col);
         order_item.set("originalProduct", product_id);
         order_item.set("amount", item_count);
         order_item.set("price", item_price);
+        order_item.set("ref", reference);
         e.app.save(order_item);
         order_item_ids.push(order_item.id);
         total_price += item_price;
@@ -278,6 +280,7 @@ routerAdd(
       user_order.set("ref", reference);
       user_order.set("relation", order_item_ids);
       user_order.set("status", "pending");
+      user_order.set("user", userid);
       user_order.set("totalPrice", total_price);
       e.app.save(user_order);
 
@@ -290,7 +293,10 @@ routerAdd(
       //@ts-ignore
       $app.store().remove(userid);
 
-      return e.json(200, { data: "order_placed", message: "Checkout validated" });
+      return e.json(200, {
+        data: "order_placed",
+        message: "Checkout validated",
+      });
     } catch (err) {
       console.log(err);
       return e.json(500, { message: "Internal server error" });
