@@ -15,31 +15,18 @@ routerAdd(
       return e.json(400, { data: null, message: "update delivery settings" });
     }
 
-    let deliveryFee = 400;
-    try {
-      deliveryFee = utils.get_delivery_fee(e.app, delivery_record);
-    } catch (err) {
-      console.error(err, "error fetching delivery fee");
-      return e.json(500, { message: "Could not calculate delivery fee" });
-    }
-
     const all_cart = e.app.findAllRecords(
       "cart",
       $dbx.exp("user = {:user}", { user: userId }),
     );
 
     try {
-      const { cartItems, cart_total, total_quantity } = utils.build_cart_items(
-        e.app,
-        all_cart,
-      );
-      const totalDeliveryFee = deliveryFee * total_quantity;
+      const { cartItems, cart_total } = utils.build_cart_items(e.app, all_cart);
       return e.json(200, {
         data: {
           cart_breakdown: {
             subtotal: cart_total,
-            deliveryFee: totalDeliveryFee,
-            total: cart_total + totalDeliveryFee,
+            total: cart_total,
           },
           cart_items: cartItems,
         },
@@ -108,25 +95,14 @@ routerAdd(
       return e.json(400, { message: "Cart is empty" });
     }
 
-    let deliveryFee = 5000;
     try {
-      deliveryFee = utils.get_delivery_fee(e.app, delivery_record);
-    } catch (err) {
-      console.error(err, "error fetching delivery fee");
-      return e.json(500, { message: "Could not calculate delivery fee" });
-    }
-
-    try {
-      const { cartItems, cart_total, total_quantity } = utils.build_cart_items(
-        e.app,
-        all_cart,
-      );
+      const { cartItems, cart_total } = utils.build_cart_items(e.app, all_cart);
       if (!cartItems.length) {
         return e.json(400, { message: "Cart is empty" });
       }
 
       const cart_hash = $security.md5(JSON.stringify(cartItems));
-      const total = cart_total + deliveryFee * total_quantity;
+      const total = cart_total;
 
       let checkout_session = null;
       try {
@@ -147,7 +123,6 @@ routerAdd(
           reference,
           status: "pending",
           cart_items: JSON.stringify(cartItems),
-          deliveryFee,
         });
         e.app.save(new_check);
 
@@ -173,7 +148,6 @@ routerAdd(
       if (checkout_session.get("hash") === cart_hash) {
         const reference = checkout_session.getString("reference");
         let access_code = checkout_session.getString("access_code");
-        checkout_session.set("deliveryFee", deliveryFee);
         if (!access_code) {
           const parsed = utils.paystack_initialize(secret, {
             email: user_email,
@@ -200,7 +174,6 @@ routerAdd(
       checkout_session.set("reference", reference);
       checkout_session.set("status", "pending");
       checkout_session.set("cart_items", JSON.stringify(cartItems));
-      checkout_session.set("deliveryFee", deliveryFee);
       checkout_session.set("access_code", "");
       e.app.save(checkout_session);
 
@@ -289,7 +262,6 @@ routerAdd(
         $dbx.exp("user = {:user}", { user: userid }),
       );
       const check_cart_items = JSON.parse(session.get("cart_items"));
-      const deliveryFee = session.getFloat("deliveryFee");
 
       for (const item of all_cart) {
         if (!item) return;
@@ -309,7 +281,6 @@ routerAdd(
         new_order.set("fullAddress", full_address);
         new_order.set("extraInfo", item.getString("extraInfo"));
         new_order.set("deliveryLocation", location);
-        new_order.set("deliveryFee", deliveryFee * item_count);
         new_order.set(
           "price",
           item_details?.product_details.price * item_count,
