@@ -278,7 +278,7 @@ routerAdd(
       const user_orders_col = e.app.findCollectionByNameOrId("user_orders");
       const user_order = new Record(user_orders_col);
       user_order.set("ref", reference);
-      user_order.set("relation", order_item_ids);
+      user_order.set("orderItems", order_item_ids);
       user_order.set("status", "pending");
       user_order.set("user", userid);
       user_order.set("totalPrice", total_price);
