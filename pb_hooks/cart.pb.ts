@@ -242,57 +242,44 @@ routerAdd(
       session.set("status", "paid");
       e.app.save(session);
 
-      const order_col = e.app.findCollectionByNameOrId("orders");
-      const user_profile = e.app.findFirstRecordByData(
-        "profile",
-        "user",
-        userid,
-      );
-      const delivery_location = e.app.findFirstRecordByData(
-        "deliverySettings",
-        "profile",
-        user_profile.getString("id"),
-      );
-      const location = delivery_location.get("location");
-      const full_address = delivery_location.getString("fullAddress");
-      console.log("user-full-address", full_address);
-
       const all_cart = e.app.findAllRecords(
         "cart",
         $dbx.exp("user = {:user}", { user: userid }),
       );
       const check_cart_items = JSON.parse(session.get("cart_items"));
 
+      const order_items_col = e.app.findCollectionByNameOrId("order_items");
+      const order_item_ids = [];
+      let total_price = 0;
+
       for (const item of all_cart) {
-        if (!item) return;
+        if (!item) continue;
         const product_id = item.getString("product");
         const item_count = item.getInt("amount");
         const item_details = check_cart_items.find(
           (i) => i.product_details.id === product_id,
         );
+        const item_price = (item_details?.product_details.price ?? 0) * item_count;
 
-        const new_order = new Record(order_col);
-        new_order.set("user", userid);
-        new_order.set("product", product_id);
-        new_order.set("amount", item_count);
-        new_order.set("profile", user_profile);
-        new_order.set("status", "pending");
-        new_order.set("reference", reference);
-        new_order.set("fullAddress", full_address);
-        new_order.set("extraInfo", item.getString("extraInfo"));
-        new_order.set("deliveryLocation", location);
-        new_order.set(
-          "price",
-          item_details?.product_details.price * item_count,
-        );
-        new_order.set("wristSize", item_details?.wristSize ?? 0);
-        new_order.set("headSize", item_details?.headSize ?? 0);
-        new_order.set("itemDetails", JSON.stringify(item_details));
-        new_order.set("checkout_session", session.id);
-        e.app.saveNoValidate(new_order);
+        const order_item = new Record(order_items_col);
+        order_item.set("originalProduct", product_id);
+        order_item.set("amount", item_count);
+        order_item.set("price", item_price);
+        e.app.save(order_item);
+        order_item_ids.push(order_item.id);
+        total_price += item_price;
+
         //@ts-ignore
         e.app.delete(item);
       }
+
+      const user_orders_col = e.app.findCollectionByNameOrId("user_orders");
+      const user_order = new Record(user_orders_col);
+      user_order.set("ref", reference);
+      user_order.set("relation", order_item_ids);
+      user_order.set("status", "pending");
+      user_order.set("totalPrice", total_price);
+      e.app.save(user_order);
 
       session.set("status", "fulfilled");
       session.set("access_code", "");
@@ -303,10 +290,7 @@ routerAdd(
       //@ts-ignore
       $app.store().remove(userid);
 
-      return e.json(200, {
-        data: "order_placed",
-        message: "Checkout validated",
-      });
+      return e.json(200, { data: "order_placed", message: "Checkout validated" });
     } catch (err) {
       console.log(err);
       return e.json(500, { message: "Internal server error" });
