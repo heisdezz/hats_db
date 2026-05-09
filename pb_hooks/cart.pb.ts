@@ -267,6 +267,7 @@ routerAdd(
         order_item.set("amount", item_count);
         order_item.set("price", item_price);
         order_item.set("ref", reference);
+        order_item.set("extraInfo", item.getString("extraInfo"));
         e.app.save(order_item);
         order_item_ids.push(order_item.id);
         total_price += item_price;
@@ -279,11 +280,11 @@ routerAdd(
       const user_order = new Record(user_orders_col);
       user_order.set("ref", reference);
       user_order.set("orderItems", order_item_ids);
+      user_order.set("preview", order_item_ids[0]);
       user_order.set("status", "pending");
       user_order.set("user", userid);
       user_order.set("totalPrice", total_price);
       e.app.save(user_order);
-
       session.set("status", "fulfilled");
       session.set("access_code", "");
       session.set("hash", "");
