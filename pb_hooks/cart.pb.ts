@@ -70,6 +70,7 @@ routerAdd(
   "POST",
   "/checkout",
   (e) => {
+    //@ts-ignore
     const utils = require(`${__hooks}/utils.js`);
     const secret = utils.secret;
     const userId = e.auth?.id;
@@ -206,6 +207,8 @@ routerAdd(
   "POST",
   "/checkout/validate",
   (e) => {
+    //@ts-ignore
+
     const utils = require(`${__hooks}/utils.js`);
     const secret = utils.secret;
     const userid = e.auth?.id;
@@ -257,6 +260,8 @@ routerAdd(
         const product_id = item.getString("product");
         const item_count = item.getInt("amount");
         const item_details = check_cart_items.find(
+          //@ts-ignore
+
           (i) => i.product_details.id === product_id,
         );
         const item_price =
