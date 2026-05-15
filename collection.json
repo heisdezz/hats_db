@@ -564,6 +564,69 @@
     }
   },
   {
+    "id": "pbc_1570316057",
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "carousel",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_4092854851",
+        "help": "",
+        "hidden": false,
+        "id": "relation3544843437",
+        "maxSelect": 0,
+        "minSelect": 0,
+        "name": "product",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [],
+    "system": false
+  },
+  {
     "id": "pbc_749661959",
     "listRule": "@request.auth.id = user",
     "viewRule": "@request.auth.id = user",
@@ -1193,6 +1256,21 @@
         "type": "text"
       },
       {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text1059593498",
+        "max": 0,
+        "min": 0,
+        "name": "extraInfo",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
         "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
@@ -1580,11 +1658,11 @@
   },
   {
     "id": "pbc_4163081445",
-    "listRule": null,
-    "viewRule": null,
-    "createRule": null,
-    "updateRule": null,
-    "deleteRule": null,
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": "@request.auth.id != \"\"",
+    "deleteRule": "@request.auth.id != \"\"",
     "name": "reviews",
     "type": "base",
     "fields": [
@@ -1602,20 +1680,6 @@
         "required": true,
         "system": true,
         "type": "text"
-      },
-      {
-        "cascadeDelete": false,
-        "collectionId": "pbc_268752357",
-        "help": "",
-        "hidden": false,
-        "id": "relation2170006031",
-        "maxSelect": 1,
-        "minSelect": 0,
-        "name": "profile",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "relation"
       },
       {
         "cascadeDelete": false,
@@ -1660,6 +1724,20 @@
         "type": "text"
       },
       {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "help": "",
+        "hidden": false,
+        "id": "relation2375276105",
+        "maxSelect": 0,
+        "minSelect": 0,
+        "name": "user",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
         "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
@@ -1681,7 +1759,7 @@
       }
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX `idx_ZNnV9gA8Ba` ON `reviews` (\n  `profile`,\n  `product`\n)"
+      "CREATE UNIQUE INDEX `idx_f3npf5rpk6` ON `reviews` (\n  `user`,\n  `product`\n)"
     ],
     "system": false
   },
@@ -2014,19 +2092,18 @@
         "type": "relation"
       },
       {
-        "autogeneratePattern": "",
+        "cascadeDelete": false,
+        "collectionId": "pbc_2456927940",
         "help": "",
         "hidden": false,
-        "id": "text1059593498",
-        "max": 0,
-        "min": 0,
-        "name": "extraInfo",
-        "pattern": "",
+        "id": "relation3112513328",
+        "maxSelect": 0,
+        "minSelect": 0,
+        "name": "preview",
         "presentable": false,
-        "primaryKey": false,
         "required": false,
         "system": false,
-        "type": "text"
+        "type": "relation"
       },
       {
         "hidden": false,
@@ -2467,6 +2544,101 @@
       "CREATE INDEX `idx_otps_collectionRef_recordRef` ON `_otps` (collectionRef, recordRef)"
     ],
     "system": true
+  },
+  {
+    "id": "pbc_221558369",
+    "listRule": "@request.auth.collectionName = \"admins\"",
+    "viewRule": "@request.auth.collectionName = \"admins\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "orders",
+    "type": "view",
+    "fields": [
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 0,
+        "min": 0,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number3398989827",
+        "max": null,
+        "min": null,
+        "name": "totalProducts",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number4147025484",
+        "max": null,
+        "min": null,
+        "name": "pendingOrders",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number32954964",
+        "max": null,
+        "min": null,
+        "name": "ProcessingOrders",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number3053673910",
+        "max": null,
+        "min": null,
+        "name": "inTransitOrders",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number2112017562",
+        "max": null,
+        "min": null,
+        "name": "deliveredOrders",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      }
+    ],
+    "indexes": [],
+    "system": false,
+    "viewQuery": "SELECT\n    user_orders.id,\n    COUNT(user_orders.id) AS totalProducts,\n    COUNT(CASE WHEN user_orders.status = 'pending' THEN 1 END) AS pendingOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'processing' THEN 1 END) AS ProcessingOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'in-transit' THEN 1 END) AS inTransitOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'delivered' THEN 1 END) AS deliveredOrders\nFROM user_orders"
   },
   {
     "id": "pbc_1681138218",
