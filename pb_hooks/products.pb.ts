@@ -1,55 +1,57 @@
-onRecordUpdateRequest((e) => {
+/// <reference path="../pb_data/types.d.ts" />
+
+function processProductTags(e) {
   if (e.auth?.isSuperuser) return e.next();
 
-  console.log("requesting update products");
   const body = e.requestInfo().body;
-
-  console.log("body", JSON.stringify(body));
-  const tags = JSON.parse(body?.tags);
-
-  if (tags?.length) {
-    console.log("checking_tags");
-
-    const tags_col = e.app.findCachedCollectionByNameOrId("tags");
-    //@ts-ignore
-    const tag_ids = tags.map((tag) => {
-      console.log("tag", tag);
-      if (tag.tagId) return tag.tagId;
-      const normalized_tag = tag.tagName.trim().toLowerCase();
-      const new_tag = new Record(tags_col);
-      new_tag.set("name", normalized_tag);
-      e.app.save(new_tag);
-      return new_tag.id;
-    });
-    console.log(tag_ids);
-    e.record?.set("tags", tag_ids);
+  if (!body || body.tags == null) {
+    return e.next();
   }
+
+  let tags = body.tags;
+  if (typeof tags === "string") {
+    try {
+      tags = JSON.parse(tags);
+    } catch (_) {
+      tags = null;
+    }
+  }
+
+  if (Array.isArray(tags) && tags.length > 0) {
+    const tagsCol = e.app.findCachedCollectionByNameOrId("tags");
+    const tagIdsSet = new Set();
+
+    for (const tag of tags) {
+      if (!tag) continue;
+      if (tag.tagId) {
+        tagIdsSet.add(tag.tagId);
+        continue;
+      }
+      if (tag.tagName && typeof tag.tagName === "string") {
+        const normalized = tag.tagName.trim().toLowerCase();
+        if (!normalized) continue;
+        let tagRecord;
+        try {
+          tagRecord = e.app.findFirstRecordByData("tags", "name", normalized);
+        } catch (_) {
+          tagRecord = new Record(tagsCol);
+          tagRecord.set("name", normalized);
+          e.app.save(tagRecord);
+        }
+        tagIdsSet.add(tagRecord.id);
+      }
+    }
+
+    e.record?.set("tags", Array.from(tagIdsSet));
+  }
+
   e.next();
+}
+
+onRecordUpdateRequest((e) => {
+  processProductTags(e);
 }, "products");
 
 onRecordCreateRequest((e) => {
-  if (e.auth?.isSuperuser) return e.next();
-
-  const body = e.requestInfo().body;
-  const tags = JSON.parse(body?.tags);
-
-  // console.log(tags);
-  if (tags?.length) {
-    const tags_col = e.app.findCachedCollectionByNameOrId("tags");
-    //@ts-ignore
-    const tag_ids = tags.map((tag) => {
-      // console.log(tag, "tag");
-      if (tag.tagId) return tag.tagId;
-      // console.log("found_tags", tag.tagName);
-      const normalized_tag = tag.tagName.trim().toLowerCase();
-      // console.log("normalized tag", normalized_tag);
-      const new_tag = new Record(tags_col);
-      new_tag.set("name", normalized_tag);
-      e.app.save(new_tag);
-      return new_tag.id;
-    });
-    console.log(tag_ids);
-    e.record?.set("tags", tag_ids);
-  }
-  e.next();
+  processProductTags(e);
 }, "products");

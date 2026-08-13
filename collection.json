@@ -996,6 +996,19 @@
       {
         "help": "",
         "hidden": false,
+        "id": "number_amount_kobo",
+        "max": null,
+        "min": null,
+        "name": "amount_kobo",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
         "id": "json3203695685",
         "maxSize": 0,
         "name": "cart_items",
@@ -1177,8 +1190,8 @@
   },
   {
     "id": "pbc_2456927940",
-    "listRule": "",
-    "viewRule": "",
+    "listRule": "user = @request.auth.id",
+    "viewRule": "user = @request.auth.id",
     "createRule": null,
     "updateRule": null,
     "deleteRule": null,
@@ -1199,6 +1212,20 @@
         "required": true,
         "system": true,
         "type": "text"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "help": "",
+        "hidden": false,
+        "id": "relation2375276105",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "user",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       },
       {
         "cascadeDelete": false,
@@ -1997,8 +2024,8 @@
   },
   {
     "id": "pbc_1888273831",
-    "listRule": "",
-    "viewRule": "",
+    "listRule": "user = @request.auth.id",
+    "viewRule": "user = @request.auth.id",
     "createRule": "@request.auth.collectionName = \"admins\"",
     "updateRule": "@request.auth.collectionName = \"admins\"",
     "deleteRule": "@request.auth.collectionName = \"admins\"",
@@ -2638,7 +2665,7 @@
     ],
     "indexes": [],
     "system": false,
-    "viewQuery": "SELECT\n    user_orders.id,\n    COUNT(user_orders.id) AS totalProducts,\n    COUNT(CASE WHEN user_orders.status = 'pending' THEN 1 END) AS pendingOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'processing' THEN 1 END) AS ProcessingOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'in-transit' THEN 1 END) AS inTransitOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'delivered' THEN 1 END) AS deliveredOrders\nFROM user_orders"
+    "viewQuery": "SELECT\n    user_orders.user AS id,\n    COUNT(user_orders.id) AS totalProducts,\n    COUNT(CASE WHEN user_orders.status = 'pending' THEN 1 END) AS pendingOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'processing' THEN 1 END) AS ProcessingOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'in-transit' THEN 1 END) AS inTransitOrders,\n\tCOUNT(CASE WHEN user_orders.status = 'delivered' THEN 1 END) AS deliveredOrders\nFROM user_orders\nWHERE user_orders.user IS NOT NULL\nGROUP BY user_orders.user"
   },
   {
     "id": "pbc_1681138218",
