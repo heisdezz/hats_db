@@ -32,7 +32,7 @@ routerAdd(
     }
 
     try {
-      const { cartItems, cart_total_kobo } = utils.build_cart_items(
+      const { cartItems, cart_total_kobo, cart_total } = utils.build_cart_items(
         e.app,
         all_cart,
       );
@@ -42,7 +42,8 @@ routerAdd(
 
       const { deliveryFee } = utils.calculate_delivery_fee(
         e.app,
-        cartItems,
+        userId,
+        cart_total,
       );
       const delivery_fee_kobo = Math.round(deliveryFee * 100);
       const total_kobo = cart_total_kobo + delivery_fee_kobo;

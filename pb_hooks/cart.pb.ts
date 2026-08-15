@@ -36,10 +36,11 @@ routerAdd(
 
       const {
         deliveryFee,
-        hatCount,
-        baseFee,
-        additionalHatFee,
-      } = utils.calculate_delivery_fee(e.app, cartItems);
+        distanceKm,
+        ratePerKm,
+        minimumFee,
+        isFreeShipping,
+      } = utils.calculate_delivery_fee(e.app, userId, cart_total);
 
       const total = cart_total + deliveryFee;
 
@@ -49,11 +50,13 @@ routerAdd(
             subtotal: cart_total,
             deliveryFee: deliveryFee,
             total: total,
+            distanceKm: distanceKm,
+            ratePerKm: ratePerKm,
+            minimumFee: minimumFee,
+            isFreeShipping: isFreeShipping,
             total_cart_space: total_cart_space,
             max_cart_space: 20,
-            hat_count: hatCount,
-            base_fee: baseFee,
-            additional_hat_fee: additionalHatFee,
+            hat_count: hat_count,
           },
           cart_items: cartItems,
         },

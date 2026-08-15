@@ -11,6 +11,106 @@ module.exports = {
     return Math.round((nairaAmount || 0) * 100);
   },
 
+  calculate_distance_km: (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+    const R = 6371; // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c * 10) / 10;
+  },
+
+  calculate_delivery_fee: (app, userId, cartTotal = 0) => {
+    const RATE_PER_KM = 185;
+    const MINIMUM_FEE = 1000;
+    const FREE_SHIPPING_THRESHOLD = 150000;
+
+    let shopLat = 6.534864;
+    let shopLon = 3.379378;
+
+    try {
+      const shopRecord = app.findFirstRecordByFilter("shop_location", "1 = 1");
+      if (shopRecord) {
+        const rawLoc = shopRecord.getString("location");
+        if (rawLoc) {
+          try {
+            const parsedLoc = JSON.parse(rawLoc);
+            if (parsedLoc.lat && parsedLoc.lon) {
+              shopLat = Number(parsedLoc.lat);
+              shopLon = Number(parsedLoc.lon);
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    let userLat = null;
+    let userLon = null;
+    let state = "";
+    let fullAddress = "";
+
+    try {
+      const deliveryRecord = app.findFirstRecordByData("deliverySettings", "user", userId);
+      if (deliveryRecord) {
+        state = deliveryRecord.getString("state") || "";
+        fullAddress = deliveryRecord.getString("fullAddress") || "";
+        const rawLoc = deliveryRecord.getString("location");
+        if (rawLoc) {
+          try {
+            const parsedLoc = JSON.parse(rawLoc);
+            if (parsedLoc.lat && parsedLoc.lon) {
+              userLat = Number(parsedLoc.lat);
+              userLon = Number(parsedLoc.lon);
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    // Check Lagos free shipping for orders >= 150,000
+    const isLagos =
+      state.toLowerCase().includes("lagos") ||
+      fullAddress.toLowerCase().includes("lagos");
+
+    if (isLagos && cartTotal >= FREE_SHIPPING_THRESHOLD) {
+      return {
+        deliveryFee: 0,
+        distanceKm: 0,
+        ratePerKm: RATE_PER_KM,
+        minimumFee: MINIMUM_FEE,
+        isFreeShipping: true,
+      };
+    }
+
+    if (!userLat || !userLon) {
+      return {
+        deliveryFee: MINIMUM_FEE,
+        distanceKm: 0,
+        ratePerKm: RATE_PER_KM,
+        minimumFee: MINIMUM_FEE,
+        isFreeShipping: false,
+      };
+    }
+
+    const distanceKm = module.exports.calculate_distance_km(shopLat, shopLon, userLat, userLon);
+    const calculatedFee = Math.round(distanceKm * RATE_PER_KM);
+    const deliveryFee = Math.max(MINIMUM_FEE, calculatedFee);
+
+    return {
+      deliveryFee,
+      distanceKm,
+      ratePerKm: RATE_PER_KM,
+      minimumFee: MINIMUM_FEE,
+      isFreeShipping: false,
+    };
+  },
+
   is_hat_product: (app, product) => {
     if (!product) return true;
     const catId = product.getString("category");
@@ -35,41 +135,6 @@ module.exports = {
       }
     } catch (_) {}
     return true;
-  },
-
-  calculate_delivery_fee: (app, allCartItems) => {
-    const BASE_FEE = 3500;
-    const INCREMENTAL_HAT_FEE = 800;
-
-    if (!allCartItems || !allCartItems.length) {
-      return {
-        deliveryFee: 0,
-        hatCount: 0,
-        baseFee: BASE_FEE,
-        additionalHatFee: INCREMENTAL_HAT_FEE,
-      };
-    }
-
-    let hatCount = 0;
-    for (const item of allCartItems) {
-      const product = item.product_details;
-      const isHat = item.is_hat !== undefined ? item.is_hat : module.exports.is_hat_product(app, product);
-      if (isHat) {
-        hatCount += (item.amount || 1);
-      }
-    }
-
-    let deliveryFee = BASE_FEE;
-    if (hatCount > 1) {
-      deliveryFee = BASE_FEE + ((hatCount - 1) * INCREMENTAL_HAT_FEE);
-    }
-
-    return {
-      deliveryFee,
-      hatCount,
-      baseFee: BASE_FEE,
-      additionalHatFee: INCREMENTAL_HAT_FEE,
-    };
   },
 
   check_cart_space_limit: (app, e) => {
