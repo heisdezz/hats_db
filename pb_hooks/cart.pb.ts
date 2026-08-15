@@ -28,11 +28,21 @@ routerAdd(
 
     try {
       const { cartItems, cart_total } = utils.build_cart_items(e.app, all_cart);
+      const { deliveryFee, distanceKm, isFreeShipping } = utils.calculate_delivery_fee(
+        e.app,
+        userId,
+        cart_total,
+      );
+      const total = cart_total + deliveryFee;
+
       return e.json(200, {
         data: {
           cart_breakdown: {
             subtotal: cart_total,
-            total: cart_total,
+            deliveryFee: deliveryFee,
+            total: total,
+            distanceKm: distanceKm,
+            isFreeShipping: isFreeShipping,
           },
           cart_items: cartItems,
         },

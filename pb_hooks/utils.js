@@ -11,6 +11,112 @@ module.exports = {
     return Math.round((nairaAmount || 0) * 100);
   },
 
+  calculate_distance_km: (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  },
+
+  calculate_delivery_fee: (app, userId, cartTotalNaira) => {
+    const MIN_FEE = 1000;
+    const RATE_PER_KM = 185;
+    const totalNaira = Number(cartTotalNaira) || 0;
+
+    let deliveryRecord = null;
+    try {
+      deliveryRecord = app.findFirstRecordByData("deliverySettings", "user", userId);
+    } catch (_) {}
+
+    if (!deliveryRecord) {
+      return {
+        deliveryFee: MIN_FEE,
+        distanceKm: 0,
+        isFreeShipping: false,
+      };
+    }
+
+    // Free shipping on Lagos orders above ₦150,000
+    const state = (deliveryRecord.getString("state") || "").toLowerCase();
+    const city = (deliveryRecord.getString("city") || "").toLowerCase();
+    const address = (deliveryRecord.getString("fullAddress") || "").toLowerCase();
+    const isLagos = state.includes("lagos") || city.includes("lagos") || address.includes("lagos");
+
+    if (totalNaira >= 150000 && isLagos) {
+      return {
+        deliveryFee: 0,
+        distanceKm: 0,
+        isFreeShipping: true,
+      };
+    }
+
+    let shopRecord = null;
+    try {
+      shopRecord = app.findFirstRecordByFilter("shop_location", "1=1");
+    } catch (_) {}
+
+    let shopLat = 6.534864;
+    let shopLon = 3.379378;
+
+    if (shopRecord) {
+      let loc = shopRecord.get("location");
+      if (typeof loc === "string") {
+        try { loc = JSON.parse(loc); } catch (_) {}
+      }
+      if (loc && typeof loc === "object") {
+        if (loc.lat) shopLat = Number(loc.lat);
+        if (loc.lon) shopLon = Number(loc.lon);
+      }
+    }
+
+    let userLat = 0;
+    let userLon = 0;
+    let userLoc = deliveryRecord.get("location");
+    if (typeof userLoc === "string") {
+      try { userLoc = JSON.parse(userLoc); } catch (_) {}
+    }
+    if (userLoc && typeof userLoc === "object") {
+      if (userLoc.lat) userLat = Number(userLoc.lat);
+      if (userLoc.lon) userLon = Number(userLoc.lon);
+    }
+
+    if (!userLat || !userLon) {
+      return {
+        deliveryFee: MIN_FEE,
+        distanceKm: 0,
+        isFreeShipping: false,
+      };
+    }
+
+    const dLat = ((userLat - shopLat) * Math.PI) / 180;
+    const dLon = ((userLon - shopLon) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((shopLat * Math.PI) / 180) *
+        Math.cos((userLat * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceKm = 6371 * c;
+
+    const calculatedFee = Math.round(distanceKm * RATE_PER_KM);
+    const deliveryFee = Math.max(MIN_FEE, calculatedFee);
+
+    return {
+      deliveryFee,
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      isFreeShipping: false,
+    };
+  },
+
   build_cart_items: (app, all_cart) => {
     let cart_total_kobo = 0;
     let total_quantity = 0;

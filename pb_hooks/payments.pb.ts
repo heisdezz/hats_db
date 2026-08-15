@@ -32,7 +32,7 @@ routerAdd(
     }
 
     try {
-      const { cartItems, cart_total_kobo } = utils.build_cart_items(
+      const { cartItems, cart_total_kobo, cart_total } = utils.build_cart_items(
         e.app,
         all_cart,
       );
@@ -40,8 +40,16 @@ routerAdd(
         return e.json(400, { message: "Cart is empty" });
       }
 
-      const cart_hash = $security.md5(JSON.stringify(cartItems));
-      const total_kobo = cart_total_kobo;
+      const { deliveryFee } = utils.calculate_delivery_fee(
+        e.app,
+        userId,
+        cart_total,
+      );
+      const delivery_fee_kobo = Math.round(deliveryFee * 100);
+      const total_kobo = cart_total_kobo + delivery_fee_kobo;
+      const cart_hash = $security.md5(
+        JSON.stringify(cartItems) + String(total_kobo),
+      );
 
       let checkout_session = null;
       try {
@@ -63,6 +71,7 @@ routerAdd(
           reference: reference,
           status: "pending",
           amount_kobo: total_kobo,
+          deliveryFee: deliveryFee,
           cart_items: JSON.stringify(cartItems),
         });
         e.app.save(new_check);
@@ -79,6 +88,7 @@ routerAdd(
           data: {
             reference: reference,
             total: total_kobo,
+            deliveryFee: deliveryFee,
             access_code: parsed.data.access_code,
             paystack: parsed.data,
           },
@@ -93,6 +103,7 @@ routerAdd(
         const reference = checkout_session.getString("reference");
         let access_code = checkout_session.getString("access_code");
         checkout_session.set("amount_kobo", total_kobo);
+        checkout_session.set("deliveryFee", deliveryFee);
         if (!access_code) {
           const parsed = utils.paystack_initialize(secret, {
             email: user_email,
@@ -108,6 +119,7 @@ routerAdd(
           data: {
             reference: reference,
             total: total_kobo,
+            deliveryFee: deliveryFee,
             access_code: access_code,
             paystack: null,
           },
@@ -120,6 +132,7 @@ routerAdd(
       checkout_session.set("reference", reference);
       checkout_session.set("status", "pending");
       checkout_session.set("amount_kobo", total_kobo);
+      checkout_session.set("deliveryFee", deliveryFee);
       checkout_session.set("cart_items", JSON.stringify(cartItems));
       checkout_session.set("access_code", "");
       e.app.save(checkout_session);
@@ -136,6 +149,7 @@ routerAdd(
         data: {
           reference: reference,
           total: total_kobo,
+          deliveryFee: deliveryFee,
           access_code: parsed.data.access_code,
           paystack: parsed.data,
         },
