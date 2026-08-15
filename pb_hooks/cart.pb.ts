@@ -27,12 +27,20 @@ routerAdd(
     );
 
     try {
-      const { cartItems, cart_total } = utils.build_cart_items(e.app, all_cart);
-      const { deliveryFee, distanceKm, isFreeShipping } = utils.calculate_delivery_fee(
-        e.app,
-        userId,
+      const {
+        cartItems,
         cart_total,
-      );
+        total_cart_space,
+        hat_count,
+      } = utils.build_cart_items(e.app, all_cart);
+
+      const {
+        deliveryFee,
+        hatCount,
+        baseFee,
+        additionalHatFee,
+      } = utils.calculate_delivery_fee(e.app, cartItems);
+
       const total = cart_total + deliveryFee;
 
       return e.json(200, {
@@ -41,8 +49,11 @@ routerAdd(
             subtotal: cart_total,
             deliveryFee: deliveryFee,
             total: total,
-            distanceKm: distanceKm,
-            isFreeShipping: isFreeShipping,
+            total_cart_space: total_cart_space,
+            max_cart_space: 20,
+            hat_count: hatCount,
+            base_fee: baseFee,
+            additional_hat_fee: additionalHatFee,
           },
           cart_items: cartItems,
         },
@@ -50,7 +61,7 @@ routerAdd(
       });
     } catch (err) {
       console.log(err);
-      return e.json(500, {});
+      return e.json(500, { message: err?.message || "Internal Server Error" });
     }
   },
   $apis.requireAuth(),
@@ -78,6 +89,13 @@ routerAdd(
 );
 
 onRecordCreateRequest((e) => {
-  e.record?.set("user", e.auth?.id);
+  const utils = require(`${__hooks}/utils.js`);
+  utils.check_cart_space_limit(e.app, e);
+  e.next();
+}, "cart");
+
+onRecordUpdateRequest((e) => {
+  const utils = require(`${__hooks}/utils.js`);
+  utils.check_cart_space_limit(e.app, e);
   e.next();
 }, "cart");

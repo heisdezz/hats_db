@@ -11,115 +11,119 @@ module.exports = {
     return Math.round((nairaAmount || 0) * 100);
   },
 
-  calculate_distance_km: (lat1, lon1, lat2, lon2) => {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
-    const R = 6371; // Earth radius in km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+  is_hat_product: (app, product) => {
+    if (!product) return true;
+    const catId = product.getString("category");
+    if (!catId) return true;
+    try {
+      const cat = app.findRecordById("category", catId);
+      if (cat) {
+        const parent = cat.getString("parent");
+        if (parent === "2b96qjthpp27avs") return true;
+        try {
+          const sec = app.findRecordById("section", parent);
+          if (sec && sec.getString("name")?.toLowerCase().includes("hat")) return true;
+          if (sec && (sec.getString("name")?.toLowerCase().includes("jewel") || sec.getString("name")?.toLowerCase().includes("accessories"))) return false;
+        } catch (_) {}
+        const name = (cat.getString("name") || "").toLowerCase();
+        if (name.includes("hat") || name.includes("facinator") || name.includes("fascinator") || name.includes("beret") || name.includes("millinery")) {
+          return true;
+        }
+        if (name.includes("jewel") || name.includes("neck") || name.includes("ear") || name.includes("ring") || name.includes("bracelet") || name.includes("anklet") || name.includes("coral")) {
+          return false;
+        }
+      }
+    } catch (_) {}
+    return true;
   },
 
-  calculate_delivery_fee: (app, userId, cartTotalNaira) => {
-    const MIN_FEE = 1000;
-    const RATE_PER_KM = 185;
-    const totalNaira = Number(cartTotalNaira) || 0;
+  calculate_delivery_fee: (app, allCartItems) => {
+    const BASE_FEE = 3500;
+    const INCREMENTAL_HAT_FEE = 800;
 
-    let deliveryRecord = null;
-    try {
-      deliveryRecord = app.findFirstRecordByData("deliverySettings", "user", userId);
-    } catch (_) {}
-
-    if (!deliveryRecord) {
-      return {
-        deliveryFee: MIN_FEE,
-        distanceKm: 0,
-        isFreeShipping: false,
-      };
-    }
-
-    // Free shipping on Lagos orders above ₦150,000
-    const state = (deliveryRecord.getString("state") || "").toLowerCase();
-    const city = (deliveryRecord.getString("city") || "").toLowerCase();
-    const address = (deliveryRecord.getString("fullAddress") || "").toLowerCase();
-    const isLagos = state.includes("lagos") || city.includes("lagos") || address.includes("lagos");
-
-    if (totalNaira >= 150000 && isLagos) {
+    if (!allCartItems || !allCartItems.length) {
       return {
         deliveryFee: 0,
-        distanceKm: 0,
-        isFreeShipping: true,
+        hatCount: 0,
+        baseFee: BASE_FEE,
+        additionalHatFee: INCREMENTAL_HAT_FEE,
       };
     }
 
-    let shopRecord = null;
-    try {
-      shopRecord = app.findFirstRecordByFilter("shop_location", "1=1");
-    } catch (_) {}
-
-    let shopLat = 6.534864;
-    let shopLon = 3.379378;
-
-    if (shopRecord) {
-      let loc = shopRecord.get("location");
-      if (typeof loc === "string") {
-        try { loc = JSON.parse(loc); } catch (_) {}
-      }
-      if (loc && typeof loc === "object") {
-        if (loc.lat) shopLat = Number(loc.lat);
-        if (loc.lon) shopLon = Number(loc.lon);
+    let hatCount = 0;
+    for (const item of allCartItems) {
+      const product = item.product_details;
+      const isHat = item.is_hat !== undefined ? item.is_hat : module.exports.is_hat_product(app, product);
+      if (isHat) {
+        hatCount += (item.amount || 1);
       }
     }
 
-    let userLat = 0;
-    let userLon = 0;
-    let userLoc = deliveryRecord.get("location");
-    if (typeof userLoc === "string") {
-      try { userLoc = JSON.parse(userLoc); } catch (_) {}
+    let deliveryFee = BASE_FEE;
+    if (hatCount > 1) {
+      deliveryFee = BASE_FEE + ((hatCount - 1) * INCREMENTAL_HAT_FEE);
     }
-    if (userLoc && typeof userLoc === "object") {
-      if (userLoc.lat) userLat = Number(userLoc.lat);
-      if (userLoc.lon) userLon = Number(userLoc.lon);
-    }
-
-    if (!userLat || !userLon) {
-      return {
-        deliveryFee: MIN_FEE,
-        distanceKm: 0,
-        isFreeShipping: false,
-      };
-    }
-
-    const dLat = ((userLat - shopLat) * Math.PI) / 180;
-    const dLon = ((userLon - shopLon) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((shopLat * Math.PI) / 180) *
-        Math.cos((userLat * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distanceKm = 6371 * c;
-
-    const calculatedFee = Math.round(distanceKm * RATE_PER_KM);
-    const deliveryFee = Math.max(MIN_FEE, calculatedFee);
 
     return {
       deliveryFee,
-      distanceKm: Math.round(distanceKm * 10) / 10,
-      isFreeShipping: false,
+      hatCount,
+      baseFee: BASE_FEE,
+      additionalHatFee: INCREMENTAL_HAT_FEE,
     };
+  },
+
+  check_cart_space_limit: (app, e) => {
+    const MAX_CART_SPACE = 20;
+    const userId = e.auth?.id;
+    if (!userId) return;
+
+    e.record?.set("user", userId);
+
+    const targetProductId = e.record?.getString("product");
+    const targetAmount = e.record?.getInt("amount") || 1;
+    const currentRecordId = e.record?.id || "";
+
+    let targetProductSpace = 1;
+    if (targetProductId) {
+      try {
+        const prod = app.findRecordById("products", targetProductId);
+        targetProductSpace = prod.getInt("cart_space") || 1;
+      } catch (_) {}
+    }
+    const newItemSpace = targetProductSpace * targetAmount;
+
+    let totalSpace = newItemSpace;
+    const otherItems = app.findAllRecords(
+      "cart",
+      $dbx.exp("user = {:user} AND id != {:id}", {
+        user: userId,
+        id: currentRecordId,
+      }),
+    );
+
+    for (const item of otherItems) {
+      const prodId = item.getString("product");
+      const amt = item.getInt("amount") || 1;
+      let pSpace = 1;
+      try {
+        const p = app.findRecordById("products", prodId);
+        pSpace = p.getInt("cart_space") || 1;
+      } catch (_) {}
+      totalSpace += pSpace * amt;
+    }
+
+    if (totalSpace > MAX_CART_SPACE) {
+      throw new BadRequestError(
+        "Cart space limit exceeded (" + totalSpace + "/" + MAX_CART_SPACE + " space units). For large event or wedding orders, please contact our bespoke team directly.",
+      );
+    }
   },
 
   build_cart_items: (app, all_cart) => {
     let cart_total_kobo = 0;
     let total_quantity = 0;
+    let total_cart_space = 0;
+    let hat_count = 0;
     const cartItems = [];
 
     for (const item of all_cart) {
@@ -139,6 +143,15 @@ module.exports = {
       const line_total_kobo = unit_price_kobo * item_amount;
       const item_naira = line_total_kobo / 100;
 
+      const product_cart_space = product.getInt("cart_space") || 1;
+      const item_total_space = product_cart_space * item_amount;
+      total_cart_space += item_total_space;
+
+      const is_hat = module.exports.is_hat_product(app, product);
+      if (is_hat) {
+        hat_count += item_amount;
+      }
+
       cartItems.push({
         id: item?.id,
         amount: item_amount,
@@ -146,6 +159,9 @@ module.exports = {
         unit_price_kobo,
         line_total_kobo,
         product_details: product,
+        cart_space: product_cart_space,
+        item_total_space,
+        is_hat,
         wristSize,
         headSize,
         extraInfo,
@@ -160,6 +176,8 @@ module.exports = {
       cart_total: cart_total_kobo / 100,
       cart_total_kobo,
       total_quantity,
+      total_cart_space,
+      hat_count,
     };
   },
 
@@ -215,6 +233,7 @@ module.exports = {
       const orderItemsCol = txApp.findCollectionByNameOrId("order_items");
       const orderItemIds = [];
       let totalKobo = 0;
+      let totalOrderCartSpace = 0;
 
       for (const item of paidSnapshot) {
         const productId = item.product_details?.id || item.originalProduct || item.product;
@@ -222,6 +241,8 @@ module.exports = {
         const lineTotalKobo =
           item.line_total_kobo ??
           Math.round((item.price ?? item.product_details?.price ?? 0) * 100 * amount);
+        const itemCartSpace = item.cart_space || 1;
+        totalOrderCartSpace += itemCartSpace * amount;
 
         const orderItem = new Record(orderItemsCol);
         orderItem.set("originalProduct", productId);
@@ -229,6 +250,7 @@ module.exports = {
         orderItem.set("price", lineTotalKobo / 100);
         orderItem.set("ref", reference);
         orderItem.set("extraInfo", item.extraInfo || "");
+        orderItem.set("cart_space", itemCartSpace);
         if (userId) {
           orderItem.set("user", userId);
         }
@@ -255,6 +277,7 @@ module.exports = {
       userOrder.set("status", "pending");
       userOrder.set("user", userId);
       userOrder.set("totalPrice", totalKobo / 100);
+      userOrder.set("total_cart_space", totalOrderCartSpace);
       txApp.save(userOrder);
 
       txSession.set("status", "fulfilled");
