@@ -1190,8 +1190,8 @@
   },
   {
     "id": "pbc_2456927940",
-    "listRule": "user = @request.auth.id",
-    "viewRule": "user = @request.auth.id",
+    "listRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
+    "viewRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
     "createRule": null,
     "updateRule": null,
     "deleteRule": null,
@@ -2024,8 +2024,8 @@
   },
   {
     "id": "pbc_1888273831",
-    "listRule": "user = @request.auth.id",
-    "viewRule": "user = @request.auth.id",
+    "listRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
+    "viewRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
     "createRule": "@request.auth.collectionName = \"admins\"",
     "updateRule": "@request.auth.collectionName = \"admins\"",
     "deleteRule": "@request.auth.collectionName = \"admins\"",
