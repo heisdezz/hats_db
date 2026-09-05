@@ -131,7 +131,9 @@
     },
     "passwordAuth": {
       "enabled": true,
-      "identityFields": ["email"]
+      "identityFields": [
+        "email"
+      ]
     },
     "mfa": {
       "enabled": false,
@@ -343,7 +345,9 @@
     },
     "passwordAuth": {
       "enabled": true,
-      "identityFields": ["email"]
+      "identityFields": [
+        "email"
+      ]
     },
     "mfa": {
       "enabled": false,
@@ -519,7 +523,9 @@
     },
     "passwordAuth": {
       "enabled": true,
-      "identityFields": ["email"]
+      "identityFields": [
+        "email"
+      ]
     },
     "mfa": {
       "enabled": false,
@@ -565,8 +571,8 @@
   },
   {
     "id": "pbc_1570316057",
-    "listRule": null,
-    "viewRule": null,
+    "listRule": "",
+    "viewRule": "",
     "createRule": null,
     "updateRule": null,
     "deleteRule": null,
@@ -603,6 +609,21 @@
         "type": "relation"
       },
       {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text4277159965",
+        "max": 0,
+        "min": 0,
+        "name": "badge",
+        "pattern": "(new|hot|trending)",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
         "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
@@ -628,8 +649,8 @@
   },
   {
     "id": "pbc_749661959",
-    "listRule": "@request.auth.id = user",
-    "viewRule": "@request.auth.id = user",
+    "listRule": "(@request.auth.id != '' && user = @request.auth.id ) || @request.auth.collectionName = \"admins\"",
+    "viewRule": "(@request.auth.id != '' && user = @request.auth.id ) || @request.auth.collectionName = \"admins\"",
     "createRule": "@request.auth.id != \"\"",
     "updateRule": "@request.auth.id = user",
     "deleteRule": "@request.auth.id = user",
@@ -868,6 +889,19 @@
         "type": "bool"
       },
       {
+        "help": "fee  helper to be added, when items are many in cart",
+        "hidden": false,
+        "id": "number549137336",
+        "max": null,
+        "min": null,
+        "name": "additonal_fee",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
         "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
@@ -996,19 +1030,6 @@
       {
         "help": "",
         "hidden": false,
-        "id": "number_amount_kobo",
-        "max": null,
-        "min": null,
-        "name": "amount_kobo",
-        "onlyInt": true,
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "number"
-      },
-      {
-        "help": "",
-        "hidden": false,
         "id": "json3203695685",
         "maxSize": 0,
         "name": "cart_items",
@@ -1049,6 +1070,19 @@
         "presentable": false,
         "system": false,
         "type": "autodate"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number1841106899",
+        "max": null,
+        "min": null,
+        "name": "amount_kobo",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
       }
     ],
     "indexes": [
@@ -1192,9 +1226,9 @@
     "id": "pbc_2456927940",
     "listRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
     "viewRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
-    "createRule": null,
-    "updateRule": null,
-    "deleteRule": null,
+    "createRule": "@request.auth.collectionName = \"admins\"",
+    "updateRule": "@request.auth.collectionName = \"admins\"",
+    "deleteRule": "@request.auth.collectionName = \"admins\"",
     "name": "order_items",
     "type": "base",
     "fields": [
@@ -1212,20 +1246,6 @@
         "required": true,
         "system": true,
         "type": "text"
-      },
-      {
-        "cascadeDelete": false,
-        "collectionId": "_pb_users_auth_",
-        "help": "",
-        "hidden": false,
-        "id": "relation2375276105",
-        "maxSelect": 1,
-        "minSelect": 0,
-        "name": "user",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "relation"
       },
       {
         "cascadeDelete": false,
@@ -1316,9 +1336,38 @@
         "presentable": false,
         "system": false,
         "type": "autodate"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "help": "",
+        "hidden": false,
+        "id": "relation2375276105",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "user",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number1989717042",
+        "max": null,
+        "min": 0,
+        "name": "cart_space",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
       }
     ],
-    "indexes": ["CREATE INDEX `idx_fg6jk64k95` ON `order_items` (`ref`)"],
+    "indexes": [
+      "CREATE INDEX `idx_fg6jk64k95` ON `order_items` (`ref`)"
+    ],
     "system": false
   },
   {
@@ -1496,6 +1545,16 @@
         "type": "text"
       },
       {
+        "help": "color selection if true allows user to select color else user cant select colors",
+        "hidden": false,
+        "id": "bool246131184",
+        "name": "color_selection",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
         "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
@@ -1514,6 +1573,19 @@
         "presentable": false,
         "system": false,
         "type": "autodate"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number1989717042",
+        "max": null,
+        "min": 0,
+        "name": "cart_space",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
       }
     ],
     "indexes": [
@@ -1831,6 +1903,36 @@
         "type": "text"
       },
       {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text1843675174",
+        "max": 0,
+        "min": 0,
+        "name": "description",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text3578368839",
+        "max": 0,
+        "min": 0,
+        "name": "display_name",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
         "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
@@ -1851,7 +1953,9 @@
         "type": "autodate"
       }
     ],
-    "indexes": ["CREATE UNIQUE INDEX `idx_8GDSDtI9s8` ON `section` (`name`)"],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_8GDSDtI9s8` ON `section` (`name`)"
+    ],
     "system": false
   },
   {
@@ -1933,6 +2037,16 @@
         "required": false,
         "system": false,
         "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "bool1463187638",
+        "name": "taking_orders",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
       },
       {
         "hidden": false,
@@ -2019,7 +2133,9 @@
         "type": "autodate"
       }
     ],
-    "indexes": ["CREATE UNIQUE INDEX `idx_gQH7N1HF06` ON `tags` (`name`)"],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_gQH7N1HF06` ON `tags` (`name`)"
+    ],
     "system": false
   },
   {
@@ -2027,7 +2143,7 @@
     "listRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
     "viewRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
     "createRule": "@request.auth.collectionName = \"admins\"",
-    "updateRule": "@request.auth.collectionName = \"admins\"",
+    "updateRule": "(@request.auth.id != '' && user = @request.auth.id) || @request.auth.collectionName = \"admins\"",
     "deleteRule": "@request.auth.collectionName = \"admins\"",
     "name": "user_orders",
     "type": "base",
@@ -2151,6 +2267,19 @@
         "presentable": false,
         "system": false,
         "type": "autodate"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number2196816159",
+        "max": null,
+        "min": 0,
+        "name": "total_cart_space",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
       }
     ],
     "indexes": [
@@ -2574,8 +2703,8 @@
   },
   {
     "id": "pbc_221558369",
-    "listRule": "@request.auth.collectionName = \"admins\"",
-    "viewRule": "@request.auth.collectionName = \"admins\"",
+    "listRule": "@request.auth.id != \"\" && @request.auth.collectionName = \"admins\"",
+    "viewRule": "@request.auth.id != \"\" && @request.auth.collectionName = \"admins\"",
     "createRule": null,
     "updateRule": null,
     "deleteRule": null,

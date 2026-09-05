@@ -355,4 +355,210 @@ module.exports = {
 
     return { status: "fulfilled" };
   },
+
+  validateOrderStatusAndLogistics: (e) => {
+    const body = e.requestInfo() ? e.requestInfo().body : {};
+    const record = e.record;
+    if (!record) return;
+
+    // Determine status (check request body first, fall back to record value)
+    let status = "";
+    if (body && body.status !== undefined && body.status !== null) {
+      status = String(body.status).trim().toLowerCase();
+    } else {
+      status = (record.getString("status") || "").trim().toLowerCase();
+    }
+
+    // Handle both 'logisitics' (collection schema spelling) and 'logistics'
+    let logisticsId = "";
+    if (body && (body.logisitics !== undefined || body.logistics !== undefined)) {
+      logisticsId = String(body.logisitics || body.logistics || "").trim();
+      if (body.logistics !== undefined && body.logisitics === undefined) {
+        record.set("logisitics", logisticsId ? logisticsId : null);
+      }
+    } else {
+      logisticsId = (record.getString("logisitics") || record.getString("logistics") || "").trim();
+    }
+
+    const isInTransit =
+      status === "in transit" ||
+      status === "in-transit" ||
+      status === "in_transit" ||
+      status === "intransit";
+    const isDelivered = status === "delivered";
+
+    // If the request is from a regular user (customers)
+    const authRecord = e.auth;
+    const authCol = authRecord ? authRecord.collection().name : "";
+    const isRegularUser = authCol === "users";
+
+    if (isRegularUser) {
+      if (record.getString("user") !== authRecord.id) {
+        throw new BadRequestError("You are not authorized to update this order.");
+      }
+
+      let currentDbOrder = null;
+      try {
+        currentDbOrder = e.app.findRecordById("user_orders", record.id);
+      } catch (_) {}
+
+      if (currentDbOrder) {
+        const currentStatus = (currentDbOrder.getString("status") || "").trim().toLowerCase();
+        const currentIsInTransit =
+          currentStatus === "in transit" ||
+          currentStatus === "in-transit" ||
+          currentStatus === "in_transit" ||
+          currentStatus === "intransit";
+
+        if (!currentIsInTransit) {
+          throw new BadRequestError(
+            "Delivery can only be confirmed for orders that are currently in transit.",
+          );
+        }
+
+        if (status !== "delivered") {
+          throw new BadRequestError(
+            "Customers are only permitted to confirm delivery of their order.",
+          );
+        }
+
+        // Lock down order integrity - prevent user from altering other fields
+        record.set("totalPrice", currentDbOrder.get("totalPrice"));
+        record.set("orderItems", currentDbOrder.get("orderItems"));
+        record.set("ref", currentDbOrder.get("ref"));
+        record.set("user", currentDbOrder.get("user"));
+        record.set("logisitics", currentDbOrder.get("logisitics"));
+        record.set("total_cart_space", currentDbOrder.get("total_cart_space"));
+        logisticsId = currentDbOrder.getString("logisitics");
+      }
+    }
+
+    // 1. Disable setting to "in transit" if logistics is not set
+    if (isInTransit) {
+      if (!logisticsId) {
+        throw new BadRequestError(
+          "Cannot update status to 'in transit': logistics must be set.",
+          {
+            logisitics: new ValidationError(
+              "required",
+              "Logistics reference is required when order is in transit.",
+            ),
+          },
+        );
+      }
+
+      try {
+        e.app.findRecordById("logistics", logisticsId);
+      } catch (_) {
+        throw new BadRequestError(
+          "Referenced logistics record does not exist.",
+          {
+            logisitics: new ValidationError(
+              "not_found",
+              "Referenced logistics record does not exist.",
+            ),
+          },
+        );
+      }
+    }
+
+    // 2. Disable setting to "delivered" without code or if code does not match logistics ref code
+    if (isDelivered) {
+      if (!logisticsId) {
+        throw new BadRequestError(
+          "Cannot update status to 'delivered': logistics must be set.",
+          {
+            logisitics: new ValidationError(
+              "required",
+              "Logistics reference is required when order is delivered.",
+            ),
+          },
+        );
+      }
+
+      let logisticsRecord = null;
+      try {
+        logisticsRecord = e.app.findRecordById("logistics", logisticsId);
+      } catch (_) {
+        throw new BadRequestError(
+          "Referenced logistics record does not exist.",
+          {
+            logisitics: new ValidationError(
+              "not_found",
+              "Referenced logistics record does not exist.",
+            ),
+          },
+        );
+      }
+
+      // Determine code (from request body or existing record)
+      let codeVal = undefined;
+      if (
+        body &&
+        body.code !== undefined &&
+        body.code !== null &&
+        body.code !== ""
+      ) {
+        codeVal = body.code;
+        record.set("code", Number(codeVal));
+      } else {
+        const rawCode = record.get("code");
+        if (
+          rawCode !== undefined &&
+          rawCode !== null &&
+          rawCode !== "" &&
+          rawCode !== 0
+        ) {
+          codeVal = rawCode;
+        }
+      }
+
+      if (
+        codeVal === undefined ||
+        codeVal === null ||
+        codeVal === "" ||
+        Number.isNaN(Number(codeVal))
+      ) {
+        throw new BadRequestError(
+          "Cannot update status to 'delivered': code is required.",
+          {
+            code: new ValidationError(
+              "required",
+              "Confirmation code is required to mark order as delivered.",
+            ),
+          },
+        );
+      }
+
+      const logisticsCode = logisticsRecord.get("code");
+      if (
+        logisticsCode === undefined ||
+        logisticsCode === null ||
+        logisticsCode === "" ||
+        Number.isNaN(Number(logisticsCode))
+      ) {
+        throw new BadRequestError(
+          "Referenced logistics provider has no code configured.",
+          {
+            code: new ValidationError(
+              "missing_logistics_code",
+              "Referenced logistics provider has no code configured.",
+            ),
+          },
+        );
+      }
+
+      if (Number(codeVal) !== Number(logisticsCode)) {
+        throw new BadRequestError(
+          "Cannot update status to 'delivered': code does not match logistics reference code.",
+          {
+            code: new ValidationError(
+              "code_mismatch",
+              "Provided code does not match the logistics reference code.",
+            ),
+          },
+        );
+      }
+    }
+  },
 };
