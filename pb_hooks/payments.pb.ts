@@ -4,34 +4,34 @@ routerAdd(
   "POST",
   "/checkout",
   (e) => {
-    const utils = require(`${__hooks}/utils.js`);
-    const secret = utils.paystack_secret();
-    const userId = e.auth?.id;
-    const user_email = e.auth?.get("email");
-
-    let delivery_record = null;
     try {
-      delivery_record = e.app.findFirstRecordByData(
-        "deliverySettings",
-        "user",
-        userId,
+      const utils = require(`${__hooks}/utils.js`);
+      const secret = utils.paystack_secret();
+      const userId = e.auth?.id;
+      const user_email = e.auth?.get("email");
+
+      let delivery_record = null;
+      try {
+        delivery_record = e.app.findFirstRecordByData(
+          "deliverySettings",
+          "user",
+          userId,
+        );
+      } catch (_) { }
+
+      const fullAddress = delivery_record?.getString("fullAddress");
+      if (!fullAddress) {
+        return e.json(400, { data: null, message: "update delivery settings" });
+      }
+
+      const all_cart = e.app.findAllRecords(
+        "cart",
+        $dbx.exp("user = {:user}", { user: userId }),
       );
-    } catch (_) { }
+      if (!all_cart.length) {
+        return e.json(400, { message: "Cart is empty" });
+      }
 
-    const fullAddress = delivery_record?.getString("fullAddress");
-    if (!fullAddress) {
-      return e.json(400, { data: null, message: "update delivery settings" });
-    }
-
-    const all_cart = e.app.findAllRecords(
-      "cart",
-      $dbx.exp("user = {:user}", { user: userId }),
-    );
-    if (!all_cart.length) {
-      return e.json(400, { message: "Cart is empty" });
-    }
-
-    try {
       const { cartItems, cart_total_kobo, cart_total } = utils.build_cart_items(
         e.app,
         all_cart,
@@ -167,36 +167,36 @@ routerAdd(
   "POST",
   "/checkout/validate",
   (e) => {
-    const utils = require(`${__hooks}/utils.js`);
-    const secret = utils.paystack_secret();
-    const userid = e.auth?.id;
-    const reference = e.requestInfo().body?.reference;
-
-    if (!reference) {
-      return e.json(400, { message: "Reference is required" });
-    }
-
-    let session = null;
     try {
-      session = e.app.findFirstRecordByData(
-        "checkout_sessions",
-        "user",
-        userid,
-      );
-    } catch (_) { }
+      const utils = require(`${__hooks}/utils.js`);
+      const secret = utils.paystack_secret();
+      const userid = e.auth?.id;
+      const reference = e.requestInfo().body?.reference;
 
-    if (!session || session.getString("reference") !== reference) {
-      return e.json(402, { message: "Payment reference mismatch" });
-    }
+      if (!reference) {
+        return e.json(400, { message: "Reference is required" });
+      }
 
-    if (session.getString("status") === "fulfilled") {
-      return e.json(200, {
-        data: "order_placed",
-        message: "Checkout validated",
-      });
-    }
+      let session = null;
+      try {
+        session = e.app.findFirstRecordByData(
+          "checkout_sessions",
+          "user",
+          userid,
+        );
+      } catch (_) { }
 
-    try {
+      if (!session || session.getString("reference") !== reference) {
+        return e.json(402, { message: "Payment reference mismatch" });
+      }
+
+      if (session.getString("status") === "fulfilled") {
+        return e.json(200, {
+          data: "order_placed",
+          message: "Checkout validated",
+        });
+      }
+
       const verifyRes = utils.paystack_verify(secret, reference);
       if (verifyRes.data?.status !== "success") {
         return e.json(402, { message: "Payment not completed" });
