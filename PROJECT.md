@@ -10,19 +10,47 @@ PocketBase backend service for the **Hats** e-commerce application.
 - **Package Manager**: `bun` (`bun install`)
 - **Admin UI**: `http://127.0.0.1:8090/_/`
 - **Type Generation**: `bunx pocketbase-typegen --db ./pb_data/data.db --out ./pocketbase-types.ts`
+- **Full Deployment Guide**: See [DEPLOYMENT.md](file:///home/destiny/Documents/projects/hats_db/DEPLOYMENT.md)
 
 ---
 
 ## 2. Production Deployment (DigitalOcean)
 
 - **Droplet IP**: `167.172.60.237` (Host user: `root`)
-- **SSH Access**: `ssh -i ~/ocean/ocean root@167.172.60.237` (or Fish shortcut `ocean`)
+- **SSH Access**: `ssh -i ~/ocean/ocean root@167.172.60.237` (or Fish shell command `ocean`)
 - **Remote App Path**: `/root/services/hats_db`
-- **Reverse Proxy**: Caddy (`/etc/caddy/Caddyfile`) routing `hats.rabii.duckdns.org` -> `localhost:8090`
+- **Reverse Proxy**: Caddy (`/etc/caddy/Caddyfile`) routing `hats.rabii.duckdns.org` & `rabii.duckdns.org` -> `localhost:8090`
 - **Systemd Service**: `hats-db.service` (`/etc/systemd/system/hats-db.service`)
   - Loads environment from `/root/services/hats_db/.env` (`EnvironmentFile=-/root/services/hats_db/.env`)
   - Working directory: `/root/services/hats_db`
+- **Deploying Updates (Standard Workflow)**:
+  1. **Push to Git**:
+     ```bash
+     git add .
+     git commit -m "feat/fix: describe changes"
+     git push origin main
+     ```
+  2. **Push to Live VPS**:
+     - **Option 1 (Automated script)**: `./deploy.sh`
+     - **Option 2 (Fish shell command)**:
+       ```fish
+       ocean
+       # Once connected to VPS:
+       cd /root/services/hats_db
+       git pull origin main
+       systemctl restart hats-db.service
+       ```
+     - **Option 3 (SSH one-liner)**:
+       ```bash
+       ssh -i ~/ocean/ocean root@167.172.60.237 "cd /root/services/hats_db && git pull origin main && systemctl restart hats-db.service"
+       ```
+  3. **Verify Live Health**:
+     ```bash
+     curl -sS https://hats.rabii.duckdns.org/api/health
+     ```
+
 - **Common Service Operations**:
+
   ```bash
   # View service status and live logs
   systemctl status hats-db.service
@@ -31,13 +59,6 @@ PocketBase backend service for the **Hats** e-commerce application.
   # Restart after updates
   systemctl restart hats-db.service
   ```
-- **Deploying Code Updates**:
-  ```bash
-  # From local repo:
-  scp -i ~/ocean/ocean pb_hooks/<file> root@167.172.60.237:/root/services/hats_db/pb_hooks/
-  ssh -i ~/ocean/ocean root@167.172.60.237 "systemctl restart hats-db.service"
-  # Or git pull inside /root/services/hats_db
-  ```
 
 ---
 
@@ -45,8 +66,8 @@ PocketBase backend service for the **Hats** e-commerce application.
 
 Store in `.env` (gitignored, chmod 600 in production):
 
-| Variable | Description |
-|---|---|
+| Variable          | Description                                                                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `PAYSTACK_SECRET` | Paystack secret key (`sk_test_...` or `sk_live_...`). Required for checkout initialization, validation, and webhooks. |
 
 ---
